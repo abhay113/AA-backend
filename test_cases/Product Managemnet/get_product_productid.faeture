@@ -1,0 +1,30 @@
+Feature: Retrieving product details by the specified product ID
+
+Scenario: User successfully retrieves product details by the specified product ID
+  Given the API endpoint /getProductByProductId/{product_id}
+  And a valid product ID
+  When I send a GET request
+  Then the response status code should be 200
+  And the response should contain the product's details
+
+Scenario: User receives an error if the product ID is invalid
+  Given the API endpoint /getProductByProductId/{product_id}
+  And an invalid product ID
+  When I send a GET request
+  Then the response status code should be 400
+  And the response should contain an error message
+
+Scenario: User receives an error if the product ID does not exist
+  Given the API endpoint /getProductByProductId/{product_id}
+  And a non-existent product ID
+  When I send a GET request
+  Then the response status code should be 404
+  And the response should contain an error message
+
+Scenario: User receives an error if the server encounters an issue
+  Given the API endpoint /getProductByProductId/{product_id}
+  And a valid product ID
+  And the server is experiencing issues
+  When I send a GET request
+  Then the response status code should be 500
+  And the response should contain an error message

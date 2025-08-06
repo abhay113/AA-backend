@@ -1,0 +1,41 @@
+{
+    "statusCodes": {
+        "200": 200,
+        "204": 204,
+        "400": 400,
+        "401": 401,
+        "403": 403,
+        "404": 404,
+        "500": 500
+    },
+    "errorResponses": {
+        "500": {
+            "statusCode": 500,
+            "message": "Internal Server Error",
+            "error": true
+        },
+        "404": {
+            "statusCode": 404,
+            "message": "Data Not Found",
+            "error": true
+        },
+        "400":{
+            "statusCode": 400,
+            "message": "Bad Request",
+            "error": true
+        },
+        "401":{
+            "statusCode": 401,
+            "message": "Invalid Access Token",
+            "error": true
+        },
+        "403":{
+            "statusCode": 403,
+            "message": "Forbidden",
+            "error": true
+        }
+        
+        
+    }
+}
+

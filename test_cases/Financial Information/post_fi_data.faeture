@@ -1,0 +1,43 @@
+Feature: Post Financial Institution (FI) Data
+
+  Scenario: Successfully post FI data
+    Given the FI Data API endpoint exists
+    When a POST request is made to /api/fiu/v1/fi/data/9b0e13a3-6bcf-4be9-9cf4-40626edb5622 with valid data
+    Then the response status code should be 200
+    And the response should be in JSON format
+    And the response should contain a unique identifier for the posted FI data
+    And subsequent GET requests should retrieve the posted FI data using the provided identifier
+
+  Scenario: Unauthorized access attempt
+    Given the FI Data API endpoint exists
+    When a POST request is made to /api/fiu/v1/fi/data/9b0e13a3-6bcf-4be9-9cf4-40626edb5622 without proper authentication
+    Then the response status code should be 403
+    And the response should indicate unauthorized access
+    And no FI data should be posted
+
+  Scenario: Incorrect FI identifier
+    Given the FI Data API endpoint exists
+    When a POST request is made to /api/fiu/v1/fi/data/invalid-identifier with valid data
+    Then the response status code should be 400
+    And the response should indicate a bad request with details on the invalid FI identifier
+    And no FI data should be posted
+
+  Scenario: Missing or invalid data
+    Given the FI Data API endpoint exists
+    When a POST request is made to /api/fiu/v1/fi/data/9b0e13a3-6bcf-4be9-9cf4-40626edb5622 with missing or invalid data
+    Then the response status code should be 400
+    And the response should indicate details about the missing or invalid data
+    And no FI data should be posted
+
+  Scenario: Server error handling
+    Given the FI Data API endpoint exists
+    When a POST request is made to /api/fiu/v1/fi/data/9b0e13a3-6bcf-4be9-9cf4-40626edb5622
+    And an unexpected server error occurs
+    Then the response status code should be 500
+    And the response should provide details about the encountered server error
+    And no FI data should be posted
+
+  Scenario: API documentation
+    Given comprehensive documentation for the FI Data API
+    When referring to the documentation for the POST endpoint
+    Then it should include details about the required payload, response format, authentication requirements, potential error scenarios, and any specific considerations for posting FI data

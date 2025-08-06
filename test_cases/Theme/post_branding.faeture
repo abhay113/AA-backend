@@ -1,0 +1,36 @@
+Feature: Updating FIU branding configuration
+
+  Scenario: Successfully updating branding configuration
+    Given the API endpoint for updating FIU branding configuration exists
+    And the request payload contains valid branding configuration data
+    When a POST request is sent to the endpoint
+    Then the response status code should be 200
+    And the response should contain a success message or indication of successful update
+
+  Scenario: Handling missing or invalid payload
+    Given the API endpoint for updating FIU branding configuration exists
+    And the request payload is missing or invalid
+    When a POST request is sent to the endpoint
+    Then the response status code should be 400 or appropriate indicating bad request
+    And the response body should contain an error message indicating missing or invalid payload
+
+  Scenario: Handling unauthorized access
+    Given the API endpoint for updating FIU branding configuration exists
+    And the request is sent without proper authentication or authorization credentials
+    When a POST request is sent to the endpoint
+    Then the response status code should be 401 or 403 indicating unauthorized access
+
+  Scenario: Handling endpoint not found
+    When a POST request is sent to a non-existent endpoint
+    Then the response status code should be 404 or appropriate indicating endpoint not found
+
+  Scenario: Handling invalid request method
+    Given the API endpoint for updating FIU branding configuration exists
+    When a request other than POST method is sent to the endpoint (e.g., GET, PUT, DELETE)
+    Then the response status code should be 405 indicating method not allowed
+
+  Scenario: Handling internal server error
+    Given the API endpoint for updating FIU branding configuration exists
+    And the server encounters an internal error during processing
+    When a POST request is sent to the endpoint
+    Then the response status code should be 500 or appropriate indicating internal server error
