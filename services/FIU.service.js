@@ -73,13 +73,15 @@ const { sendMessage } = require('../scheduler_queue/producer');
 const jwsSignature = require('./keycloak.service')
 
 const fiRequestAddQueue = require('../fiRequest_queue/addFiRequestQueue')
-/*
- * @author: adarsh
- * @description: POST consent.
- * @param: {} req.param will contain consent detail.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
- */
 
+/**
+ * @author: adarsh
+ * @description: Initiates a consent request by sending details to the FIU service and storing the request data in the database.
+ * @param {object} body - The request body containing consent details.
+ * @param {string} realm - The realm of the user/operation.
+ * @param {string} group - The group associated with the consent request.
+ * @returns {Promise<object>} An object containing the success message, status, and the response data from the AA, including the consent handle.
+ */
 exports.postConsent = async function (body, realm, group) {
   try {
     console.log("Inside post consent service");
@@ -434,6 +436,11 @@ exports.postConsent = async function (body, realm, group) {
 };
 
 
+/**
+ * @description A helper function to create a replica object of the consent details for archival or logging purposes.
+ * @param {object} consentBody - The consent detail object.
+ * @returns {object} A new object with a flattened structure suitable for the replica table.
+ */
 // eslint-disable-next-line no-undef
 newConsentReplica = function (consentBody) {
   let newConsent = {
@@ -471,13 +478,15 @@ newConsentReplica = function (consentBody) {
 }
 
 
-/*
+/**
  * @author: adarsh
- * @description: POST FI request .
- * @param: {} req.param will contain FI details.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Submits a request for financial information (FI) using an approved consent handle. It communicates with the FIU service, receives a session ID, and logs the FI request details in the database.
+ * @param {string} consentHandle - The unique handle for the approved consent.
+ * @param {string} realm - The operational realm for the request.
+ * @param {string} group - The group associated with the FI request.
+ * @param {string} queueName - The name of the scheduler queue, if the request is part of a scheduled job.
+ * @returns {Promise<object>} An object containing the success message and data from the FIU service, including the session ID.
  */
-
 exports.postFIRequest = async function (consentHandle, realm, group, queueName) {
   try {
     console.log("postFIRequest called");
@@ -847,6 +856,11 @@ exports.postFIRequest = async function (consentHandle, realm, group, queueName) 
   }
 };
 
+/**
+ * @description A helper function that transforms an FI request object into a structured format for a replica table.
+ * @param {object} FIreqbody - The original FI request body.
+ * @returns {object} A new, flattened FI request object for storage.
+ */
 // eslint-disable-next-line no-undef
 newFiRequestReplica = function (FIreqbody) {
   let newFiRequest = {
@@ -873,12 +887,14 @@ newFiRequestReplica = function (FIreqbody) {
   return newFiRequest;
 }
 
-/*
-* @author: adarsh
-* @description: GET STATUS .
-* @param: {} req.param will contain consent detail.
-* @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
-*/
+/**
+ * @author: adarsh
+ * @description: Fetches the current status of a consent from the FIU service using its handle. The function caches the response and updates the consent status across multiple tables in the local database.
+ * @param {string} consentHandle - The unique handle of the consent to check.
+ * @param {string} realm - The operational realm.
+ * @param {string} group - The group associated with the consent.
+ * @returns {Promise<object>} An object containing the success message and the consent status data from the FIU.
+ */
 exports.getStatusByConsentHandle = async function (consentHandle, realm, group) {
   try {
     const cacheKey = JSON.stringify(consentHandle);
@@ -1107,13 +1123,13 @@ exports.getStatusByConsentHandle = async function (consentHandle, realm, group) 
 
 
 
-/*
-* @author: adarsh
-* @description: POST consent Notification.
-* @param: {} req.param will contain .
-* @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
-*/
-
+/**
+ * @author: adarsh
+ * @description: Handles incoming consent status notifications from the FIU. It authenticates the request, updates the consent status in the database, and may trigger an automated FI request if configured.
+ * @param {object} body - The notification payload from the FIU.
+ * @param {string} auth - The authorization header from the incoming request for validation.
+ * @returns {Promise<object>} A response object confirming the receipt and processing of the notification.
+ */
 exports.postConsentNotification = async function (body, auth) {
   console.log("Inside fiu service - Update consent status", body);
 
@@ -1391,6 +1407,12 @@ exports.postConsentNotification = async function (body, auth) {
 
 };
 
+/**
+ * @description Fetches detailed information for a specific consent artifact from the aggregator/FIU. It decodes the signed consent (JWT) to extract linked accounts and other metadata, then updates the local database.
+ * @param {string} consentHandle - The consent handle (may not be used directly in API call but useful for context).
+ * @param {string} consentId - The unique ID of the consent artifact to fetch.
+ * @returns {Promise<object>} An object containing a success message and the detailed consent information from the aggregator.
+ */
 exports.getConsentInfoFromAggregator = async function (consentHandle, consentId) {
   try {
     const cacheKey = "consent_info" + consentId;
@@ -1525,11 +1547,13 @@ exports.getConsentInfoFromAggregator = async function (consentHandle, consentId)
 
 /*
  * @author: adarsh
- * @description: GET FI by session id.
- * @param: {} req.param will contain consent detail.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Fetches financial information from the FIU by session ID, stores it in the database, and returns the data.
+ * @param {string} sessionId - The session ID for which to fetch financial information.
+ * @param {object} res - The Express response object.
+ * @param {string} group - The user group associated with the request.
+ * @param {string} realm - The operational realm for the request.
+ * @returns {Promise<object>} An object containing a success message and the fetched financial data.
  */
-
 exports.getFinancialInfo = async function (sessionId, res, group,realm) {
   try {
     const cacheKey = JSON.stringify(sessionId);
@@ -1686,11 +1710,10 @@ exports.getFinancialInfo = async function (sessionId, res, group,realm) {
 
 /*
  * @author: adarsh
- * @description: POST FI Notification.
- * @param: {} req.param will contain .
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Handles FI (Financial Information) status notifications from the FIU. Updates the status in the database and, if the status is 'READY', decrypts the data, performs comparison logic, and may trigger a webhook.
+ * @param {object} body - The notification payload containing FI status details.
+ * @returns {Promise<object>} A response object indicating the outcome of the notification processing.
  */
-
 exports.postFINotification = async function (body) {
   console.log("Inside fiu service - Update consent status");
 
@@ -2092,9 +2115,10 @@ exports.postFINotification = async function (body) {
 
 /*
  * @author: gokul
- * @description: This is a webhook which will be invoked by FIU module when it receives the consent information.
- * @param: {} req body should have consent details as per Rebit API standard.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: This is a webhook which will be invoked by the FIU module when it receives the consent information. It authenticates the request, decodes the signed consent, and updates the database with details like linked accounts and the digital signature.
+ * @param {object} consentDetailBody - The request body containing consent details as per the Rebit API standard.
+ * @param {string} auth - The authorization header for validating the request.
+ * @returns {Promise<object>} A response object indicating success or failure.
  */
 exports.postConsentInformation = async function (consentDetailBody, auth) {
   var deferred = Q.defer();
@@ -2201,9 +2225,10 @@ exports.postConsentInformation = async function (consentDetailBody, auth) {
 
 /*
  * @author: gokul
- * @description: This is a webhook which will be invoked by FIU module when it receives the financial information.
- * @param: {} req body should have consent details as per Rebit API standard.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: This is a webhook invoked by the FIU module when it receives financial information. It logs the incoming FI data against the corresponding session and consent IDs in the database.
+ * @param {string} sessionId - The session ID associated with the financial data.
+ * @param {object} FIBody - The request body containing financial information as per the Rebit API standard.
+ * @returns {Promise<object>} A response object indicating success or failure of the data insertion.
  */
 exports.postFIdata = async function (sessionId, FIBody) {
   var deferred = Q.defer();
@@ -2268,11 +2293,12 @@ exports.postFIdata = async function (sessionId, FIBody) {
 
 /*
  * @author: adarsh
- * @description: GET consent by consentId .
- * @param: {} req.param will contain consent detail.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Retrieves detailed consent information from the FIU using the consent ID. It decodes the signed consent, extracts linked accounts, and updates the local database records.
+ * @param {string} consentId - The unique ID of the consent.
+ * @param {string} group - The user group associated with the request.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An object containing a success message and the detailed consent information.
  */
-
 exports.getConsentInfoByConsentId = async function (consentId, group,realm) {
   try {
     const cacheKey = "consent_" + consentId;
@@ -2453,23 +2479,24 @@ exports.getConsentInfoByConsentId = async function (consentId, group,realm) {
 
 /*
  * @author: adarsh
- * @description: GET consents by filters .
- * @param: {} req.param will contain filters.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Retrieves a list of FI (Financial Information) requests based on specified filters, with support for pagination.
+ * @param {object} filters - An object containing filter criteria for the query.
+ * @param {string} group - The user group for scoping the results.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An object containing the list of FI requests and total count if paginated.
  */
-
 exports.getFiRequestsByFilters = async function (filters, group, realm) {
   try {
     console.log("Inside filter service");
 
     const cacheKey = JSON.stringify(`fi-request_${group}`);  //+ filters
-    const reply = await GET_ASYNC(cacheKey);
-    if (reply) {
-      console.log('Using cached data');
-      const parsedData = JSON.parse(reply);
-      console.log(`PARSED: ${parsedData}`);
-      return parsedData;
-    }
+    // const reply = await GET_ASYNC(cacheKey);
+    // if (reply) {
+    //   console.log('Using cached data');
+    //   const parsedData = JSON.parse(reply);
+    //   console.log(`PARSED: ${parsedData}`);
+    //   return parsedData;
+    // }
 
     let page = 1;
     let pageSize = process.env.DEFAULT_PAGE_SIZE;
@@ -2482,7 +2509,7 @@ exports.getFiRequestsByFilters = async function (filters, group, realm) {
       // let from = (page - 1) * pageSize;
       // let to = (page * pageSize) - 1;
 
-      const result = await SequelizeDao.getPaginatedFIrequest(filters, pageSize, offset);
+      const result = await SequelizeDao.getPaginatedFIrequest(filters, pageSize, offset,realm);
       // const countResult = await SequelizeDao.getCount('FI_REQUEST');
 
       // result['totalCount'] = result.count;
@@ -2569,25 +2596,27 @@ exports.getFiRequestsByFilters = async function (filters, group, realm) {
 
 /*
  * @author: adarsh
- * @description: GET consents by filters .
- * @param: {} req.param will contain filters.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Retrieves a list of consents based on specified filters, supporting pagination and caching.
+ * @param {object} filters - An object containing filter criteria for querying consents.
+ * @param {string} group - The user group for scoping the consent data.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An object containing the list of consents and pagination details.
  */
 exports.getConsentsByFilters = async function (filters, group,realm) {
   try {
     const cacheKey = JSON.stringify(`consents_${group}`);  //+ filters
 
-    const reply = await GET_ASYNC(cacheKey);
-    if (reply) {
-      console.log('Using cached data');
-      const parsedData = JSON.parse(reply);
-      console.log(`PARSED: ${parsedData}`);
-      return parsedData;
-    }
+    // const reply = await GET_ASYNC(cacheKey);
+    // if (reply) {
+    //   console.log('Using cached data');
+    //   const parsedData = JSON.parse(reply);
+    //   console.log(`PARSED: ${parsedData}`);
+    //   return parsedData;
+    // }
 
     let page = 1;
     let pageSize = process.env.DEFAULT_PAGE_SIZE;
-
+    console.log("filters.page",filters.page)
     if (filters.page) {
       page = filters.page;
       delete filters.page;
@@ -2598,7 +2627,7 @@ exports.getConsentsByFilters = async function (filters, group,realm) {
 
       // const result = await FIUDao.getPaginatedConsents(filters, from, to);
 
-      const result = await SequelizeDao.getPaginatedConsents(filters, pageSize, offset);
+      const result = await SequelizeDao.getPaginatedConsents(filters, pageSize, offset,realm);
 
       // await FIUDao.getCount('consent_request_detail').then(function (countResult) {
       // result['totalCount'] = countResult.count;
@@ -2701,6 +2730,12 @@ exports.getConsentsByFilters = async function (filters, group,realm) {
   }
 };
 
+/**
+ * @description Retrieves the total count of consents and a breakdown of counts by status for a given group and realm.
+ * @param {string} group - The user group to filter the consent counts.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An object containing the total count and status-wise counts of consents.
+ */
 exports.getConsentsCount = async function (group,realm) {
   try {
     const cacheKey = `consents/count_${group}`;
@@ -2771,6 +2806,12 @@ exports.getConsentsCount = async function (group,realm) {
   }
 }
 
+/**
+ * @description Retrieves the total count of FI (Financial Information) requests and a breakdown of counts by status for a given group and realm.
+ * @param {string} group - The user group to filter the request counts.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An object containing the total count and status-wise counts of FI requests.
+ */
 exports.getRequestCount = async function (group,realm) {
   try {
     const cacheKey = `fi/requests/count_${group}`;
@@ -2843,11 +2884,11 @@ exports.getRequestCount = async function (group,realm) {
 
 /*
  * @author: adarsh
- * @description: GET consents by consent ID .
- * @param: {} req.param will nothing.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Retrieves comprehensive details for a specific consent request using its unique request ID. It fetches linked account information to provide a full picture of the consent.
+ * @param {string} consent_request_id - The unique identifier for the consent request.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An object containing the detailed consent information.
  */
-
 exports.getConsentsByConsentRequestId = async function (consent_request_id, realm) {
   try {
     const cacheKey = "consents_" + consent_request_id;
@@ -2921,11 +2962,11 @@ exports.getConsentsByConsentRequestId = async function (consent_request_id, real
 
 /*
   * @author: adarsh
-  * @description: XMl converter.
-  * @param: {} req.param will nothing.
-  * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+  * @description: Fetches encrypted financial data, decrypts the resulting XML, and converts it into CSV format.
+  * @param {string} sessionId - The session ID for which to retrieve and convert data.
+  * @param {string} realm - The operational realm.
+  * @returns {Promise<object>} A response object containing the data in CSV format.
   */
-
 exports.xmlConverter = async function (sessionId,realm) {
   var deferred = Q.defer();
   try {
@@ -3035,9 +3076,11 @@ exports.xmlConverter = async function (sessionId,realm) {
 
 /*
   * @author: abhishek
-  * @description: XMl converter.
-  * @param: {} req.param will nothing.
-  * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+  * @description: Retrieves financial data, converts it from XML to JSON, and then generates a PDF report. It handles fetching new data, using cached/stored data, and data encryption/decryption.
+  * @param {string} sessionId - The session ID for which to generate the report.
+  * @param {string} realm - The operational realm.
+  * @param {object} body - An object containing `fetchType` ('onetime' or 'periodic') and `dataType` ('new' or 'old').
+  * @returns {Promise<object>} A response object containing the generated PDF data as a buffer.
   */
 exports.xmlConverterToPdf = async function (sessionId,realm,body) {
   var deferred = Q.defer();
@@ -3386,6 +3429,12 @@ exports.xmlConverterToPdf = async function (sessionId,realm,body) {
   return deferred.promise;
 };
 
+/**
+ * @description Encrypts data using AWS KMS to generate and manage a Data Encryption Key (DEK).
+ * @param {object} data - The JSON object to encrypt.
+ * @param {string} secretKey - The ARN of the AWS KMS key.
+ * @returns {Promise<object>} An object containing the encrypted data, the encrypted DEK, and the initialization vector (IV).
+ */
 async function encryptData(data,secretKey) {
   try {
     console.log('SecretKey:', secretKey);
@@ -3420,6 +3469,13 @@ async function encryptData(data,secretKey) {
   }
 }
 
+/**
+ * @description Decrypts data that was encrypted using the envelope encryption pattern with AWS KMS.
+ * @param {string} encryptedData - The base64-encoded encrypted data.
+ * @param {string} encryptedDek - The base64-encoded encrypted Data Encryption Key (DEK).
+ * @param {string} iv - The base64-encoded initialization vector.
+ * @returns {Promise<object>} The decrypted JSON object.
+ */
 async function decryptData(encryptedData,encryptedDek,iv) {
   try {
     const { Plaintext: dek } = await kms
@@ -3445,6 +3501,11 @@ async function decryptData(encryptedData,encryptedDek,iv) {
   }
 }
 
+/**
+ * @description Parses and consolidates financial data from multiple XML sources into a single JSON object.
+ * @param {Array<object>} entireData - An array of FI data objects, each containing decrypted XML strings.
+ * @returns {Promise<object>} A consolidated JSON object containing all the financial data.
+ */
 async function getConsolidatedFIdata(entireData) {
   let fiData = entireData;
   const parser = new xml2js.Parser({});
@@ -3470,6 +3531,11 @@ async function getConsolidatedFIdata(entireData) {
   return consolidatedJson;
 }
 
+/**
+ * @description A recursive helper function to flatten the attribute-centric structure (`$`) that results from XML-to-JSON conversion.
+ * @param {object} obj - The object to process.
+ * @returns {object} The object with its attributes merged into the parent.
+ */
 function flattenAttributes(obj) {
   if (obj && typeof obj === 'object') {
     if (obj.$) {
@@ -3485,9 +3551,9 @@ function flattenAttributes(obj) {
 
 /**
  * @author: Gokul
- * @description: POST, generates deposit report.
- * @param: {} req.param will contain json converted from xml.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Generates a deposit report in PDF format using jsreport based on provided JSON data.
+ * @param {object} reportData - The JSON data to be used in the report template.
+ * @returns {Promise<object>} A response object containing the generated PDF as a buffer.
  */
 exports.generateDepositReport = async function (reportData) {
   const res = await client.render({
@@ -3528,11 +3594,10 @@ exports.generateDepositReport = async function (reportData) {
 
 /**
  * @author: Gokul
- * @description: POST logout user.
- * @param: {} req.param will contain nothing.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Initiates the logout process for a user by invalidating their session in the identity provider.
+ * @param {object} body - An object containing the `realm_id` and `user_id` of the user to log out.
+ * @returns {Promise<object>} A response object indicating the success of the logout operation.
  */
-
 exports.logoutUser = async function (body) {
   var deferred = Q.defer();
 
@@ -3579,6 +3644,13 @@ exports.logoutUser = async function (body) {
   return deferred.promise;
 }
 
+/**
+ * @description A helper function that performs the actual logout API call to the identity provider for a specific user in a given realm.
+ * @param {string} token - An authorization token for the API call.
+ * @param {string} realmId - The identifier of the realm.
+ * @param {string} userId - The identifier of the user to log out.
+ * @returns {Promise<object>} A response object from the identity provider.
+ */
 async function logoutUserFromRealm(token, realmId, userId) {
 
   var deferred = Q.defer();
@@ -3625,11 +3697,12 @@ async function logoutUserFromRealm(token, realmId, userId) {
 
 /*
   * @author: adarsh
-  * @description: GET TableDataByValue .
-  * @param: {} req.param will nothing.
-  * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+  * @description: Retrieves data from a specified table where a given column matches a specific value.
+  * @param {string} tableName - The name of the table to query.
+  * @param {string} columnName - The name of the column to filter by.
+  * @param {string} columnValue - The value to match in the specified column.
+  * @returns {Promise<object>} A promise that resolves to an object containing the fetched data or an error response.
   */
-
 exports.getTableDataByValue = function (tableName, columnName, columnValue) {
   return new Promise((resolve) => {
 
@@ -3687,61 +3760,113 @@ exports.getTableDataByValue = function (tableName, columnName, columnValue) {
 
 /*
   * @author: adarsh
-  * @description: GET all aggregators .
-  * @param: {} req.param will nothing.
-  * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+  * @description: Retrieves a list of all active Account Aggregators (AAs). It supports pagination and enriches the data by indicating whether each aggregator is linked to the specified realm.
+  * @param {object} filters - An object that may contain pagination details (e.g., `page`).
+  * @param {string} realm - The realm for which to check the aggregator linkage status.
+  * @returns {Promise<object>} An object containing the list of aggregators, along with a `link` status and pagination info if applicable.
   */
-
-exports.getAllAggregators = async function (realm) {
+exports.getAllAggregators = async function (filters,realm) {
   console.log("INSIDE AGGREGATOR SERVICE");
   try {
     const cacheKey = "aggregators"
-    const reply = await GET_ASYNC(cacheKey);
+    // const reply = await GET_ASYNC(cacheKey);
 
-    if (reply) {
-      const parsedData = JSON.parse(reply);
-      return parsedData;
-    }
-    const aggregators = await SequelizeDao.getAllData('AGGREGATOR', { status : 'ACTIVE' }, [['aggregator_id', 'DESC']]);
+    // if (reply) {
+    //   const parsedData = JSON.parse(reply);
+    //   return parsedData;
+    // }
 
-    const LinkedAggregators = await SequelizeDao.getAllData('FIU_AGGREGATOR', { status : 'ACTIVE', realmName: realm });
+    let page = 1;
+    let pageSize = process.env.DEFAULT_PAGE_SIZE;
+    if (filters.page) {
+      page = filters.page;
+      delete filters.page;
 
-    console.log("LinkedAggregators",LinkedAggregators)
+      let offset = (page - 1) * pageSize;
+      
+      // Get total count (for pagination)
+      const totalCount = await SequelizeDao.getCount('AGGREGATOR', { status: 'ACTIVE' });
 
-    aggregators.forEach((aggregator) => {
-      const filter = LinkedAggregators.filter(
-        (link) => link.aggregator_id === aggregator.dataValues.aggregator_id
-      );
-      aggregator.dataValues.link = filter.length > 0; // Add the `link` key to dataValues
-    });
+      const aggregators = await SequelizeDao.getAllData('AGGREGATOR', { status : 'ACTIVE' }, [['aggregator_id', 'DESC']], pageSize,offset);
 
-    console.log("aggregators----->",aggregators)
-
-
-    if (aggregators.error) {
-      const { statusCode, message, errorMessage, error } = aggregators.error;
-      return {
-        message: message,
-        error: error,
-        errorMessage: errorMessage,
-        statusCode: statusCode,
+      
+      const LinkedAggregators = await SequelizeDao.getAllData('FIU_AGGREGATOR', { status : 'ACTIVE', realmName: realm });
+      
+      // Add `link` property
+      aggregators.forEach((aggregator) => {
+        const filter = LinkedAggregators.filter(
+          (link) => link.aggregator_id === aggregator.dataValues.aggregator_id
+        );
+        aggregator.dataValues.link = filter.length > 0;
+      });
+      
+      // Handle errors
+      if (aggregators.error) {
+        const { statusCode, message, errorMessage, error } = aggregators.error;
+        return {
+          message,
+          error,
+          errorMessage,
+          statusCode,
+        };
+      }
+      
+      // Success response with pagination metadata
+      const responseBody = {
+        message: "Success",
+        error: false,
+        statusCode: 200,
+        result: {
+          data: aggregators,
+          totalCount:totalCount
+        },
       };
+      
+      return responseBody;
+      
+    } else {
+      const aggregators = await SequelizeDao.getAllData('AGGREGATOR', { status : 'ACTIVE' }, [['aggregator_id', 'DESC']]);
+
+        const LinkedAggregators = await SequelizeDao.getAllData('FIU_AGGREGATOR', { status : 'ACTIVE', realmName: realm });
+
+        console.log("LinkedAggregators",LinkedAggregators)
+
+        aggregators.forEach((aggregator) => {
+          const filter = LinkedAggregators.filter(
+            (link) => link.aggregator_id === aggregator.dataValues.aggregator_id
+          );
+          aggregator.dataValues.link = filter.length > 0; // Add the `link` key to dataValues
+        });
+
+        console.log("aggregators----->",aggregators)
+
+
+        if (aggregators.error) {
+          const { statusCode, message, errorMessage, error } = aggregators.error;
+          return {
+            message: message,
+            error: error,
+            errorMessage: errorMessage,
+            statusCode: statusCode,
+          };
+        }
+
+        console.log("Aggregators", aggregators);
+
+        const responseBody = {
+          message: "Success",
+          error: false,
+          statusCode: 200,
+          result: {
+            data: aggregators,
+          },
+        };
+
+        // eslint-disable-next-line no-undef
+
+        await SET_ASYNC(cacheKey, JSON.stringify(responseBody), 'EX', 1);
+        return responseBody
     }
-
-    console.log("Aggregators", aggregators);
-
-    const responseBody = {
-      message: "Success",
-      error: false,
-      statusCode: 200,
-      result: {
-        data: aggregators,
-      },
-    };
-    // eslint-disable-next-line no-undef
-    await SET_ASYNC(cacheKey, JSON.stringify(responseBody), 'EX', 1);
-
-    return responseBody;
   } catch (error) {
     console.error(`Error in getAllAggregators ${error}`);
     let errorBody = {
@@ -3754,6 +3879,12 @@ exports.getAllAggregators = async function (realm) {
   }
 };
 
+/**
+ * @description Fetches and decrypts financial information (FI) from the FIU module for a given session ID.
+ * @param {string} sessionId - The unique session identifier for the FI request.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An object containing the decrypted financial information.
+ */
 exports.getDecryptedFI = async function (sessionId,realm) {
   try {
     const cacheKey = JSON.stringify(sessionId);
@@ -3858,11 +3989,9 @@ exports.getDecryptedFI = async function (sessionId,realm) {
 
 /*
   * @author: adarsh
-  * @description: GET all Purpose codes .
-  * @param: {} req.param will nothing.
-  * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+  * @description: Retrieves a list of all available purpose codes from the database.
+  * @returns {Promise<object>} An object containing the list of purpose codes.
   */
-
 exports.getAllPurposeCodes = async function () {
   console.log("INSIDE PURPOSE CODES SERVICE");
   try {
@@ -3912,11 +4041,9 @@ exports.getAllPurposeCodes = async function () {
 
 /*
   * @author: adarsh
-  * @description: GET all consent modes .
-  * @param: {} req.param will nothing.
-  * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+  * @description: Retrieves a list of all available consent modes from the database.
+  * @returns {Promise<object>} An object containing the list of consent modes.
   */
-
 exports.getAllConsentModes = async function () {
   console.log("INSIDE consent Modes SERVICE");
   try {
@@ -3966,11 +4093,9 @@ exports.getAllConsentModes = async function () {
 
 /*
   * @author: adarsh
-  * @description: GET all consent types .
-  * @param: {} req.param will nothing.
-  * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+  * @description: Retrieves a list of all available consent types from the database.
+  * @returns {Promise<object>} An object containing the list of consent types.
   */
-
 exports.getAllConsentTypes = async function () {
   console.log("INSIDE consent types SERVICE");
   try {
@@ -4020,11 +4145,9 @@ exports.getAllConsentTypes = async function () {
 
 /*
   * @author: adarsh
-  * @description: GET all fi types .
-  * @param: {} req.param will nothing.
-  * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+  * @description: Retrieves a list of all available financial information (FI) types from the database.
+  * @returns {Promise<object>} An object containing the list of FI types.
   */
-
 exports.getAllFiTypes = async function () {
   console.log("INSIDE fi types SERVICE");
   try {
@@ -4074,11 +4197,9 @@ exports.getAllFiTypes = async function () {
 
 /*
   * @author: adarsh
-  * @description: GET all data filters operators .
-  * @param: {} req.param will nothing.
-  * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+  * @description: Retrieves a list of all available data filter operators from the database.
+  * @returns {Promise<object>} An object containing the list of operators.
   */
-
 exports.getAllOperators = async function () {
   console.log("INSIDE fi types SERVICE");
   try {
@@ -4129,12 +4250,12 @@ exports.getAllOperators = async function () {
 
 /*
  * @author: adarsh
- * @description: POST bulk consent.
- * @param: {} req.param will contain consent detail.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Processes an array of consent requests in a single batch. For each request, it creates a consent, then generates a secure, encrypted redirect URL for the Account Aggregator (AA) journey.
+ * @param {Array<object>} consentsArray - An array of consent request objects.
+ * @param {string} group - The user group initiating the bulk request.
+ * @param {string} realm - The operational realm for the requests.
+ * @returns {Promise<object>} An object containing the results of each individual consent request, including the generated AA redirect URL.
  */
-
-
 exports.postBulkConsent = async function (consentsArray, group, realm) {  //, redirectURL, sessionid
   try {
     console.log("GROUP :",group);
@@ -4301,6 +4422,11 @@ exports.postBulkConsent = async function (consentsArray, group, realm) {  //, re
   }
 };
 
+/**
+ * @description Retrieves a secret value from AWS Secrets Manager.
+ * @param {object} params - The parameters for the `getSecretValue` API call, typically containing the `SecretId`.
+ * @returns {Promise<object>} A promise that resolves to the parsed JSON secret value.
+ */
 async function getSecretKey(params) {
   var deferred = Q.defer();
   // Create an instance of the Secrets Manager service
@@ -4329,6 +4455,11 @@ async function getSecretKey(params) {
   return deferred.promise;
 }
 
+/**
+ * @description Converts an ISO date string to a specific UTC date-time format (DDMMYYYYHHmmSSS).
+ * @param {string} reqdate - The input date string (e.g., from an ISO timestamp).
+ * @returns {Promise<string>} The formatted UTC date string.
+ */
 async function convertToUTC(reqdate) {
   const dateObj = new Date(reqdate);
 
@@ -4346,7 +4477,14 @@ async function convertToUTC(reqdate) {
   return formattedDate;
 }
 
-//AES256 encryption
+/**
+ * @description Encrypts a string using AES-256-CBC. The encryption key is derived from a secret key and a salt using PBKDF2.
+ * @param {string} strToEncrypt - The plaintext string to encrypt.
+ * @param {string} salt - The salt for key derivation.
+ * @param {string} secretKey - The secret key for key derivation.
+ * @param {string} AES_ALGO - The AES algorithm to use (e.g., 'aes-256-cbc').
+ * @returns {Promise<string|null>} The base64url-encoded encrypted string, or null on error.
+ */
 async function encrypt(strToEncrypt, salt, secretKey, AES_ALGO) {
   const iv = Buffer.alloc(16, 0); // Initialization vector
 
@@ -4377,7 +4515,12 @@ async function encrypt(strToEncrypt, salt, secretKey, AES_ALGO) {
 //   }
 // }
 
-// base64/XOR encryption
+/**
+ * @description Encrypts a value by performing a XOR operation with a key and then encoding the result in base64url.
+ * @param {string} value - The string value to encrypt.
+ * @param {string} key - The key to use for the XOR operation.
+ * @returns {Promise<string>} The base64url-encoded XORed value.
+ */
 async function encryptValueToXor(value, key) {
   const xorKeyBuffer = Buffer.from(key, 'utf8');
   const valueBuffer = Buffer.from(value, 'utf8');
@@ -4404,9 +4547,11 @@ async function encryptValueToXor(value, key) {
 
 /*
  * @author: adarsh
- * @description: POST product.
- * @param: {} req.param will contain consent detail.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Creates a new product template for generating consents. It ensures the product name is unique within the given realm and group.
+ * @param {object} body - The request body containing product details, including `productName` and `ConsentDetail`.
+ * @param {string} realm - The operational realm.
+ * @param {string} group - The user group the product belongs to.
+ * @returns {Promise<object>} An object containing a success message and the newly created product's ID.
  */
 exports.postProduct = async function (body, realm, group) {
   try {
@@ -4499,11 +4644,12 @@ exports.postProduct = async function (body, realm, group) {
 
 /*
  * @author: adarsh
- * @description: DELETE product.
- * @param: {} req.param will contain consent detail.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Deletes a product from the database based on its ID, scoped by realm and group.
+ * @param {string} product_id - The unique identifier of the product to delete.
+ * @param {string} realm - The operational realm.
+ * @param {string} group - The user group the product belongs to.
+ * @returns {Promise<object>} An object confirming the successful deletion.
  */
-
 exports.deleteProduct = async function (product_id, realm, group) {
   try {
     console.log("Inside deleteProduct service");
@@ -4554,12 +4700,13 @@ exports.deleteProduct = async function (product_id, realm, group) {
 
 /*
  * @author: adarsh
- * @description: UPDATE product.
- * @param: {} req.param will contain consent detail.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Updates the details of an existing product, identified by its ID and scoped by realm and group.
+ * @param {object} productBody - An object containing the updated product details (`productName`, `ConsentDetail`, `status`).
+ * @param {string} product_id - The unique identifier of the product to update.
+ * @param {string} realm - The operational realm.
+ * @param {string} group - The user group the product belongs to.
+ * @returns {Promise<object>} An object confirming the successful update and returning the product ID.
  */
-
-
 exports.updateProduct = async function (productBody, product_id, realm, group) {
   try {
     console.log("Inside updateProduct service");
@@ -4633,13 +4780,12 @@ exports.updateProduct = async function (productBody, product_id, realm, group) {
 
 /*
  * @author: adarsh
- * @description: get product details by id.
- * @param: {} req.param will contain consent detail.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Retrieves the details of a single product by its unique ID, scoped by realm and group.
+ * @param {string} product_id - The unique identifier of the product.
+ * @param {string} realm - The operational realm.
+ * @param {string} group - The user group associated with the product.
+ * @returns {Promise<object>} An object containing the details of the specified product.
  */
-
-
-
 exports.getProductDetailsbyId = async function (product_id, realm, group) {
   try {
     const cacheKey = "products_" + product_id;
@@ -4704,62 +4850,123 @@ exports.getProductDetailsbyId = async function (product_id, realm, group) {
 
 /*
  * @author: adarsh
- * @description: get all product details.
- * @param: {} req.param will contain consent detail.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Retrieves all product details for a given realm and group, with support for pagination.
+ * @param {object} filters - An object that may contain pagination filters (e.g., `page`).
+ * @param {string} realm - The operational realm.
+ * @param {string} group - The user group to scope the product search.
+ * @returns {Promise<object>} An object containing a list of products and, if applicable, pagination details.
  */
-
-exports.getAllProductDetails = async function (realm, group) {
+exports.getAllProductDetails = async function (filters,realm, group) {
   try {
     let responseBody;
     const cacheKey = `products_${group}`;
-    const reply = await GET_ASYNC(cacheKey);
+    // const reply = await GET_ASYNC(cacheKey);
 
-    if (reply) {
-      const parsedData = JSON.parse(reply);
-      return parsedData;
-    }
-    let condition;
-    if (group == 'admin') {
-      condition = {
-        realm: realm
-      };
-    } else {
-      condition = {
-        realm: realm,
-        group: group
-      };
-    }
+    // if (reply) {
+    //   const parsedData = JSON.parse(reply);
+    //   return parsedData;
+    // }
+   
 
-    const productDetails = await SequelizeDao.getAllData("PRODUCT", condition);
+    let page = 1;
+    let pageSize = process.env.DEFAULT_PAGE_SIZE;
+    console.log("filters.page",filters.page)
+    if (filters.page) {
+      page = filters.page;
+      delete filters.page;
+
+      let offset = (page - 1) * pageSize;
+      // let from = (page - 1) * pageSize;
+      // let to = page * pageSize - 1;
+
+      // const result = await FIUDao.getPaginatedConsents(filters, from, to);
+
+      const result = await SequelizeDao.getPaginatedProduct(filters, pageSize, offset,realm);
+
+      // await FIUDao.getCount('consent_request_detail').then(function (countResult) {
+      // result['totalCount'] = countResult.count;
+      // }).catch(function (err) {
+      //   console.log(err);
+      //   throw err;
+      // });
+
+      let responseBody;
+
+      if (result.error) {
+        if (result.error.statusCode == 401) {
+          responseBody = {
+            message: errorResponses[401].message,
+            error: errorResponses[401].error,
+            errorMessage: result.error.message,
+            statusCode: errorResponses[401].statusCode,
+          };
+        } else if (result.error.statusCode == 404) {
+          responseBody = {
+            message: errorResponses[404].message,
+            error: errorResponses[404].error,
+            errorMessage: result.error.message,
+            statusCode: errorResponses[404].statusCode,
+          };
+        }
+        throw responseBody;
+      } else {
+        responseBody = {
+          message: 'success',
+          error: false,
+          statusCode: 200,
+          result: {
+            data: result,
+            totalCount: result.count
+          }
+        };
+        await SET_ASYNC(cacheKey, JSON.stringify(responseBody), 'EX', 60);
+        return responseBody;
+      }
+    }else {
+      let condition;
+      if (group == 'admin') {
+        condition = {
+          realm: realm
+        };
+      } else {
+        condition = {
+          realm: realm,
+          group: group
+        };
+      }
+
+      const productDetails = await SequelizeDao.getAllData("PRODUCT", condition);
 
 
-    if (!productDetails || productDetails.length === 0) {
+      if (!productDetails || productDetails.length === 0) {
+        responseBody = {
+          message: "No Products!",
+          error: false,
+          statusCode: 200,
+          result: {
+            data: {},
+          },
+        };
+        return responseBody;
+
+      }
+
+      console.log("PRODUCT", productDetails);
+
       responseBody = {
-        message: "No Products!",
+        message: "Success",
         error: false,
         statusCode: 200,
         result: {
-          data: {},
+          data: productDetails,
         },
       };
-      return responseBody;
+      await SET_ASYNC(cacheKey, JSON.stringify(responseBody), 'EX', 60);
 
+      return responseBody;
     }
 
-    console.log("PRODUCT", productDetails);
-
-    responseBody = {
-      message: "Success",
-      error: false,
-      statusCode: 200,
-      result: {
-        data: productDetails,
-      },
-    };
-    await SET_ASYNC(cacheKey, JSON.stringify(responseBody), 'EX', 60);
-
-    return responseBody;
+    
   } catch (error) {
     console.error(`Error in get product by id ${error}`);
     let errorBody = {
@@ -4775,12 +4982,12 @@ exports.getAllProductDetails = async function (realm, group) {
 
 /*
  * @author: adarsh
- * @description: UPDATE product.
- * @param: {} req.param will contain consent detail.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Links or unlinks an aggregator to a specific realm. If the status is 'ACTIVE', it creates an association; otherwise, it removes the association.
+ * @param {object} aggregatorBody - An object containing the `status` for the aggregator ('ACTIVE' to link, other values to unlink).
+ * @param {string} aggregator_id - The unique identifier of the aggregator.
+ * @param {string} realm - The realm to link or unlink the aggregator from.
+ * @returns {Promise<object>} An object confirming the successful status update.
  */
-
-
 exports.updateAggregatorStatus = async function (aggregatorBody, aggregator_id,realm) {
   try {
     console.log("Inside updateAggregator service");
@@ -4855,11 +5062,11 @@ exports.updateAggregatorStatus = async function (aggregatorBody, aggregator_id,r
 
 /*
  * @author: adarsh
- * @description: UPDATE product.
- * @param: {} req.param will contain consent detail.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and resultconsentHandle (data, count, page etc).
+ * @description: Sets a specific aggregator as the default for the system. It ensures only one aggregator is marked as default at any time by unsetting the previous default before setting the new one.
+ * @param {object} aggregatorBody - The request body (not actively used but part of the function signature).
+ * @param {string} aggregator_id - The ID of the aggregator to be set as default.
+ * @returns {Promise<object>} An object confirming the successful update.
  */
-
 exports.setDefaultAggregator = async function (aggregatorBody, aggregator_id) {
   try {
     console.log("Inside setDefaultAggregator service");
@@ -4912,12 +5119,13 @@ exports.setDefaultAggregator = async function (aggregatorBody, aggregator_id) {
 
 /*
  * @author: Gokul
- * @description: get all configurations.
- * @param: {} req.param will contain consent detail.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Retrieves all configuration settings for a given realm and group, with support for pagination.
+ * @param {object} filters - An object containing pagination filters (e.g., page number).
+ * @param {string} realm - The operational realm for which to fetch configurations.
+ * @param {string} group - The user group associated with the configurations.
+ * @return {Promise<object>} An object containing a list of configurations, and pagination data if applicable.
  */
-
-exports.getAllConfigurations = async function (realm, group) {
+exports.getAllConfigurations = async function (filters, realm, group) {
   try {
     const cacheKey = `all_configurations_${group}`;
     const reply = await GET_ASYNC(cacheKey);
@@ -4927,34 +5135,89 @@ exports.getAllConfigurations = async function (realm, group) {
       return parsedData;
     }
 
-    const configurations = await SequelizeDao.getAllData("CONFIGURATION", { realm: realm });
+    let page = 1;
+    let pageSize = process.env.DEFAULT_PAGE_SIZE;
+    if (filters.page) {
+      page = filters.page;
+      delete filters.page;
 
-    if (!configurations || configurations.length === 0) {
-      const error = new Error("Configurations not found");
-      let errorBody = {
-        message: errorResponses[404].message,
-        error: errorResponses[404].error,
-        errorMessage: error.message,
-        statusCode: errorResponses[404].statusCode,
+      let offset = (page - 1) * pageSize;
+      // let from = (page - 1) * pageSize;
+      // let to = page * pageSize - 1;
+
+      // const result = await FIUDao.getPaginatedConsents(filters, from, to);
+
+      const result = await SequelizeDao.getPaginatedAppearnce(filters, pageSize, offset,realm);
+
+      // await FIUDao.getCount('consent_request_detail').then(function (countResult) {
+      // result['totalCount'] = countResult.count;
+      // }).catch(function (err) {
+      //   console.log(err);
+      //   throw err;
+      // });
+
+      let responseBody;
+
+      if (result.error) {
+        if (result.error.statusCode == 401) {
+          responseBody = {
+            message: errorResponses[401].message,
+            error: errorResponses[401].error,
+            errorMessage: result.error.message,
+            statusCode: errorResponses[401].statusCode,
+          };
+        } else if (result.error.statusCode == 404) {
+          responseBody = {
+            message: errorResponses[404].message,
+            error: errorResponses[404].error,
+            errorMessage: result.error.message,
+            statusCode: errorResponses[404].statusCode,
+          };
+        }
+        throw responseBody;
+      } else {
+        responseBody = {
+          message: 'success',
+          error: false,
+          statusCode: 200,
+          result: {
+            data: result,
+            totalCount: result.count
+          }
+        };
+        await SET_ASYNC(cacheKey, JSON.stringify(responseBody), 'EX', 60);
+        return responseBody;
+      }
+    } else {
+      const configurations = await SequelizeDao.getAllData("CONFIGURATION", { realm: realm });
+
+      if (!configurations || configurations.length === 0) {
+        const error = new Error("Configurations not found");
+        let errorBody = {
+          message: errorResponses[404].message,
+          error: errorResponses[404].error,
+          errorMessage: error.message,
+          statusCode: errorResponses[404].statusCode,
+        };
+        return errorBody;
+
+      }
+
+      console.log("CONFIGURATION", configurations);
+
+      const responseBody = {
+        message: "Success",
+        error: false,
+        statusCode: 200,
+        result: {
+          data: configurations,
+        },
       };
-      return errorBody;
 
+      await SET_ASYNC(cacheKey, JSON.stringify(responseBody), 'EX', 60);
+
+      return responseBody;
     }
-
-    console.log("CONFIGURATION", configurations);
-
-    const responseBody = {
-      message: "Success",
-      error: false,
-      statusCode: 200,
-      result: {
-        data: configurations,
-      },
-    };
-
-    await SET_ASYNC(cacheKey, JSON.stringify(responseBody), 'EX', 60);
-
-    return responseBody;
   } catch (error) {
     console.error(`Error while fetching configurations: ${error}`);
     let errorBody = {
@@ -4969,6 +5232,12 @@ exports.getAllConfigurations = async function (realm, group) {
 };
 
 
+/**
+ * @description Generates a session by authenticating with an external authorization server using pre-configured client credentials.
+ * @param {string} product_id - The product identifier to be included in the session request.
+ * @param {string} realm_id - The realm identifier for which the session is being created.
+ * @returns {Promise<object>} An object containing the session data returned by the authorization server.
+ */
 exports.authServerGenerateSession = async function (product_id, realm_id) {
   try {
 
@@ -5021,6 +5290,14 @@ exports.authServerGenerateSession = async function (product_id, realm_id) {
 };
 
 
+/**
+ * @description Creates a new branding configuration, including uploading a logo to an S3 bucket.
+ * @param {object} body - The main configuration data.
+ * @param {object} fileInfo - Information about the uploaded logo file.
+ * @param {string} realm - The operational realm for this configuration.
+ * @param {string} group - The user group associated with this configuration.
+ * @returns {Promise<object>} A success response object.
+ */
 exports.brandingConfiguration = async function (body, fileInfo, realm, group) {
   try {
     console.log('Inside service');
@@ -5079,6 +5356,15 @@ exports.brandingConfiguration = async function (body, fileInfo, realm, group) {
 
 
 
+/**
+ * @description A helper function to upload a file to a specified path in an S3 bucket and create a CloudFront invalidation for it.
+ * @param {object} array - The file object, typically from a form submission library like Multer.
+ * @param {string} key - A string key, not actively used but part of the function signature.
+ * @param {string} config_id - A unique ID used in constructing the S3 key.
+ * @param {string} group - The user group, used in constructing the S3 key.
+ * @param {string} realm - The operational realm, used to determine the S3 path from configuration.
+ * @returns {Promise<Array<object>>} A promise that resolves to an array containing the S3 upload response.
+ */
 async function addFilesToS3(array, key, config_id, group,realm) {
   var deferred = Q.defer();
   let imageLink = [];
@@ -5145,6 +5431,11 @@ async function addFilesToS3(array, key, config_id, group,realm) {
   return deferred.promise;
 }
 
+/**
+ * @description A helper function that wraps the AWS S3 upload functionality in a promise.
+ * @param {object} params - The parameters for the S3 upload operation.
+ * @returns {Promise<object>} A promise that resolves with the S3 upload response data on success.
+ */
 async function uploadFiles(params) {
   var deferred = Q.defer();
 
@@ -5175,6 +5466,12 @@ async function uploadFiles(params) {
 }
 
 
+/**
+ * @description Retrieves the branding configuration for a specific group and realm.
+ * @param {string} realm - The operational realm.
+ * @param {string} group - The user group.
+ * @returns {Promise<object>} An object containing the branding configuration data.
+ */
 exports.getBrandConfiguration = async function (realm, group) {
   console.log("INSIDE GET BRAND CONFIGURATION SERVICE");
   try {
@@ -5223,6 +5520,15 @@ exports.getBrandConfiguration = async function (realm, group) {
   }
 };
 
+/**
+ * @description Updates an existing branding configuration. It can either update the configuration data, replace the logo, or both.
+ * @param {object} body - The new branding configuration data.
+ * @param {object} fileInfo - Information for the new logo file, if one is being uploaded.
+ * @param {string} realm - The operational realm.
+ * @param {string} group - The user group.
+ * @param {string} config_id - The ID of the configuration to update.
+ * @returns {Promise<object>} A success response object.
+ */
 exports.updateBrandingConfiguration = async function (body, fileInfo, realm, group, config_id) {
   var deferred = Q.defer();
   console.log('Inside update branding configuration service');
@@ -5279,6 +5585,13 @@ exports.updateBrandingConfiguration = async function (body, fileInfo, realm, gro
   return deferred.promise;
 }
 
+/**
+ * @description Toggles the automated Financial Information (FI) request feature for a given configuration.
+ * @param {object} body - The request body, containing a boolean `fi_request` property.
+ * @param {string} config_id - The ID of the configuration to update.
+ * @param {string} group - The user group associated with the configuration.
+ * @returns {Promise<object>} A success response object.
+ */
 exports.automateFiRequest = async function (body, config_id, group) {
   try {
     console.log("Inside setDefaultAggregator service");
@@ -5311,6 +5624,11 @@ exports.automateFiRequest = async function (body, config_id, group) {
   }
 };
 
+/**
+ * @description Creates or updates a product. If a `product_id` is provided in the body, it updates the existing product; otherwise, it creates a new one.
+ * @param {object} body - The product data, including `productName`, `ConsentDetail`, `status`, and optionally `product_id`.
+ * @returns {Promise<object>} A success response containing the product name and ID.
+ */
 exports.postDraftProduct = async function (body) {
   try {
     console.log("Inside postDraftProduct service");
@@ -5416,13 +5734,10 @@ exports.postDraftProduct = async function (body) {
 
 /*
  * @author: adarsh
- * @description: get aggragtor details by id.
- * @param: {} req.param will contain consent detail.
- * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
+ * @description: Retrieves the details of a single Account Aggregator by its unique ID.
+ * @param {string} aggregator_id - The ID of the aggregator to retrieve.
+ * @return {Promise<object>} An object containing the aggregator's details.
  */
-
-
-
 exports.getAggregatorDetailsbyId = async function (aggregator_id) {
   try {
     const cacheKey = "aggregator_" + aggregator_id;
@@ -5469,6 +5784,12 @@ exports.getAggregatorDetailsbyId = async function (aggregator_id) {
 };
 
 
+/**
+ * @description Updates the details of a specific Account Aggregator identified by its ID.
+ * @param {object} aggregatorBody - An object containing the new details for the aggregator.
+ * @param {string} aggregator_id - The ID of the aggregator to update.
+ * @returns {Promise<object>} A success response object containing the aggregator's ID.
+ */
 exports.updateAggregatorDetailsById = async function (aggregatorBody, aggregator_id) {
   try {
     console.log("Inside updateAggregatorDetailsById service");
@@ -5507,6 +5828,10 @@ exports.updateAggregatorDetailsById = async function (aggregatorBody, aggregator
   }
 };
 
+/**
+ * @description Fetches and consolidates data from several master tables into a single response.
+ * @returns {Promise<object>} An object containing data from all master tables like FI types, operators, consent types, etc.
+ */
 exports.getAllMasterTableData = async function () {
   console.log("INSIDE getAllMasterTableData SERVICE");
   try {
@@ -5627,6 +5952,11 @@ exports.getAllMasterTableData = async function () {
 };
 
 
+/**
+ * @description Retrieves the details of a Financial Information (FI) request from the replica table using its session ID.
+ * @param {string} session - The session ID of the FI request.
+ * @returns {Promise<object>} An object containing the detailed information of the FI request.
+ */
 exports.getFIRequestBySessionId = async function (session) {
   try {
     const cacheKey = "firequest_session" + session;
@@ -5666,6 +5996,12 @@ exports.getFIRequestBySessionId = async function (session) {
 };
 
 
+/**
+ * @description Initiates a bank statement analysis by decrypting FI data, uploading it as an XML file to an external analytics service, and updating the local record with a reference ID.
+ * @param {string} sessionId - The session ID of the financial data to be analyzed.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An acknowledgement response containing the reference ID for the analysis job.
+ */
 exports.getAnalyticstBySessionId = async function (sessionId,realm) {
   var deferred = Q.defer()
   try {
@@ -5838,6 +6174,12 @@ exports.getAnalyticstBySessionId = async function (sessionId,realm) {
   return deferred.promise;
 };
 
+/**
+ * @description A helper function to create a temporary local XML file from a string of XML data.
+ * @param {string} xmlData - The XML content to be written to the file.
+ * @param {string} fileName - The base name for the temporary file.
+ * @returns {Promise<string>} A promise that resolves with the path to the newly created file.
+ */
 function createXmlFile(xmlData, fileName) {
   return new Promise((resolve, reject) => {
     const tempFilePath = `temp/${fileName}.xml`;
@@ -5897,6 +6239,11 @@ function createXmlFile(xmlData, fileName) {
 // }
 // });
 
+/**
+ * @description Retrieves the lifecycle trail of a consent request using its correlation ID. It maps the different stages of the consent and FI request process to a user-friendly format.
+ * @param {string} correlation_id - The unique ID that links all stages of the consent journey.
+ * @returns {Promise<object>} An object containing an array of stages, each with a status, date, and time.
+ */
 exports.getConsentTrail = async function (correlation_id) {
   console.log("INSIDE GET CONSENT TRAIL SERVICE");
   try {
@@ -6024,6 +6371,11 @@ exports.getConsentTrail = async function (correlation_id) {
   }
 };
 
+/**
+ * @description A helper function to format a timestamp into separate date ('DD MMMM YYYY') and time ('HH:mm:ss A') strings.
+ * @param {string} timestamp - The ISO 8601 timestamp string to format.
+ * @returns {Promise<Array<string>>} A promise that resolves to an array containing the formatted date and time.
+ */
 async function getFormattedDateTime(timestamp) {
   const momentObject = moment(timestamp);
   const formattedDate = momentObject.format('DD MMMM YYYY');
@@ -6032,6 +6384,12 @@ async function getFormattedDateTime(timestamp) {
 }
 
 
+/**
+ * @description Retrieves the total count of customers for a specific group and realm.
+ * @param {string} group - The user group for which to count customers.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An object containing the total customer count.
+ */
 exports.customerCount = async function (group,realm) {
   try {
     const cacheKey = `customer/count_${group}`;
@@ -6085,6 +6443,12 @@ exports.customerCount = async function (group,realm) {
 }
 
 
+/**
+ * @description Retrieves the count of consents grouped by FI (Financial Information) type for a specific group and realm.
+ * @param {string} group - The user group.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An object containing a breakdown of consent counts by FI type and the total number of consents.
+ */
 exports.fiTypesCount = async function (group,realm) {
   try {
     const cacheKey = `fiTypes/count_${group}`;
@@ -6162,6 +6526,12 @@ exports.fiTypesCount = async function (group,realm) {
 }
 
 
+/**
+ * @description Retrieves a breakdown of FI (Financial Information) requests by aggregator and FI type for a specific group and realm.
+ * @param {string} group - The user group.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An object containing the analytics data, structured by aggregator and FI type.
+ */
 exports.getAggregatorsByFiRequest = async function (group,realm) {
   try {
     const cacheKey = `fi/requests/aggregators/count_${group}`;
@@ -6236,6 +6606,12 @@ exports.getAggregatorsByFiRequest = async function (group,realm) {
 }
 
 
+/**
+ * @description Retrieves a breakdown of consents by aggregator and FI (Financial Information) type for a specific group and realm.
+ * @param {string} group - The user group.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An object containing the analytics data, structured by aggregator and FI type.
+ */
 exports.getAggregatorsByConsent = async function (group,realm) {
   try {
     const cacheKey = `consent/aggregators/count_${group}`;
@@ -6302,6 +6678,12 @@ exports.getAggregatorsByConsent = async function (group,realm) {
 }
 
 
+/**
+ * @description Retrieves the count of consents that are nearing their expiration date, for a specific group and realm.
+ * @param {string} group - The user group.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An object containing the count of expiring consents.
+ */
 exports.getConsentExpiryCount = async function (group,realm) {
   try {
     const cacheKey = `consent_expiry/count_${group}`;
@@ -6354,6 +6736,12 @@ exports.getConsentExpiryCount = async function (group,realm) {
 }
 
 
+/**
+ * @description Retrieves a breakdown of FI (Financial Information) requests by FI type, grouped by the start date of the data range.
+ * @param {string} group - The user group.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An object containing analytics data structured by data range and FI type.
+ */
 exports.getFiTypesByFiRequest = async function (group,realm) {
   try {
     const cacheKey = `fi/types/count_${group}`;
@@ -6428,6 +6816,11 @@ exports.getFiTypesByFiRequest = async function (group,realm) {
 }
 
 
+/**
+ * @description Retrieves the details of a specific role by its ID.
+ * @param {string} roleId - The unique ID of the role to fetch.
+ * @returns {Promise<object>} An object containing the role's details.
+ */
 exports.getRole = async function (roleId) {
   console.log("INSIDE GETROLES SERVICE");
   try {
@@ -6476,7 +6869,14 @@ exports.getRole = async function (roleId) {
 };
 
 
-exports.getAllRoles = async function (group) {
+/**
+ * @description Retrieves a list of all roles, with support for pagination.
+ * @param {object} filters - An object that may contain pagination filters (e.g., page number).
+ * @param {string} group - The user group to scope the request.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An object containing a list of roles and pagination data if applicable.
+ */
+exports.getAllRoles = async function (filters,group,realm) {
   console.log("INSIDE GET ALL ROLES SERVICE");
   try {
     const cacheKey = `all_roles_${group}`
@@ -6486,31 +6886,90 @@ exports.getAllRoles = async function (group) {
       const parsedData = JSON.parse(reply);
       return parsedData;
     }
-    const roles = await SequelizeDao.getAllData('ROLES', {});
 
-    if (roles.error) {
-      const { statusCode, message, errorMessage, error } = roles.error;
-      return {
-        message: message,
-        error: error,
-        errorMessage: errorMessage,
-        statusCode: statusCode,
+    let page = 1;
+    let pageSize = process.env.DEFAULT_PAGE_SIZE;
+    console.log("filters.page",filters.page)
+    if (filters.page) {
+      page = filters.page;
+      delete filters.page;
+
+      let offset = (page - 1) * pageSize;
+      // let from = (page - 1) * pageSize;
+      // let to = page * pageSize - 1;
+
+      // const result = await FIUDao.getPaginatedConsents(filters, from, to);
+
+      const result = await SequelizeDao.getPaginatedRoles(filters, pageSize, offset,realm);
+
+      // await FIUDao.getCount('consent_request_detail').then(function (countResult) {
+      // result['totalCount'] = countResult.count;
+      // }).catch(function (err) {
+      //   console.log(err);
+      //   throw err;
+      // });
+
+      let responseBody;
+
+      if (result.error) {
+        if (result.error.statusCode == 401) {
+          responseBody = {
+            message: errorResponses[401].message,
+            error: errorResponses[401].error,
+            errorMessage: result.error.message,
+            statusCode: errorResponses[401].statusCode,
+          };
+        } else if (result.error.statusCode == 404) {
+          responseBody = {
+            message: errorResponses[404].message,
+            error: errorResponses[404].error,
+            errorMessage: result.error.message,
+            statusCode: errorResponses[404].statusCode,
+          };
+        }
+        throw responseBody;
+      } else {
+        responseBody = {
+          message: 'success',
+          error: false,
+          statusCode: 200,
+          result: {
+            data: result,
+            totalCount: result.count
+          }
+        };
+        await SET_ASYNC(cacheKey, JSON.stringify(responseBody), 'EX', 60);
+        return responseBody;
+      }
+    } else {
+      const roles = await SequelizeDao.getAllData('ROLES', {});
+
+
+      if (roles.error) {
+        const { statusCode, message, errorMessage, error } = roles.error;
+        return {
+          message: message,
+          error: error,
+          errorMessage: errorMessage,
+          statusCode: statusCode,
+        };
+      }
+  
+      console.log("ROLES", roles);
+  
+      const responseBody = {
+        message: "Success",
+        error: false,
+        statusCode: 200,
+        result: {
+          data: roles,
+        },
       };
+      await SET_ASYNC(cacheKey, JSON.stringify(responseBody), 'EX', 60);
+  
+      return responseBody;
     }
 
-    console.log("ROLES", roles);
-
-    const responseBody = {
-      message: "Success",
-      error: false,
-      statusCode: 200,
-      result: {
-        data: roles,
-      },
-    };
-    await SET_ASYNC(cacheKey, JSON.stringify(responseBody), 'EX', 60);
-
-    return responseBody;
   } catch (error) {
     console.error(`Error in get roles ${error}`);
     let errorBody = {
@@ -6523,6 +6982,12 @@ exports.getAllRoles = async function (group) {
   }
 };
 
+/**
+ * @description Deletes a branding configuration from the database based on its unique ID.
+ * @param {string} realm - The operational realm.
+ * @param {string} config_id - The ID of the branding configuration to delete.
+ * @returns {Promise<object>} A success response object.
+ */
 exports.deleteBrandingConfiguration = async function (realm, config_id) {
   try {
     console.log("Inside deleteBrandingConfiguration service");
@@ -6549,6 +7014,11 @@ exports.deleteBrandingConfiguration = async function (realm, config_id) {
   }
 };
 
+/**
+ * @description A helper function to create a cache invalidation in AWS CloudFront for a specified path.
+ * @param {string} path - The path of the object in the CloudFront distribution to invalidate (e.g., `/images/logo.png`).
+ * @returns {Promise<void>}
+ */
 async function createInvalidation(path) {
   const client = new CloudFrontClient({ region: process.env.AWS_REGION })
 
@@ -6572,6 +7042,11 @@ async function createInvalidation(path) {
 
 }
 
+/**
+ * @description A webhook to handle the download and storage of a Bank Statement Analysis (BSA) report. It fetches the report from a given URL, uploads it to S3, and updates the corresponding FI request record.
+ * @param {object} body - The webhook payload, containing `excelUrl` and `referenceId`.
+ * @returns {Promise<object>} An acknowledgement response.
+ */
 exports.bsaReportDownload = async function (body) {
   try {
     let responseBody;
@@ -6663,6 +7138,11 @@ exports.bsaReportDownload = async function (body) {
   }
 };
 
+/**
+ * @description Retrieves the S3 link for a previously generated Bank Statement Analysis (BSA) report using the session ID of the FI request.
+ * @param {string} session_id - The session ID of the FI request associated with the report.
+ * @returns {Promise<object>} An object containing the S3 URL of the BSA report.
+ */
 exports.getBsaReport = async function (session_id) {
   console.log("INSIDE GET BSA REPORT SERVICE");
   try {
@@ -6699,8 +7179,15 @@ exports.getBsaReport = async function (session_id) {
     };
     throw errorBody;
   }
-}
+};
 
+/**
+ * @description Sends an SMS notification to a customer using the MSG91 service, based on a pre-configured template.
+ * @param {object} body - The request body.
+ * @param {string} body.group - The user group, used to fetch SMS configuration.
+ * @param {string} body.customer_id - The customer's mobile number.
+ * @returns {Promise<object>} A success response object upon successful sending of the SMS.
+ */
 exports.sendSms = async function (body) {
   console.log("INSIDE GET SMS SERVICE");
   try {
@@ -6752,6 +7239,13 @@ exports.sendSms = async function (body) {
   }
 }
 
+/**
+ * @description Acts as a webhook endpoint for the scheduler. When invoked, it triggers a new Financial Information (FI) request for a given consent handle.
+ * @param {object} body - The webhook payload.
+ * @param {string} body.consentHandle - The consent handle for which to initiate an FI request.
+ * @param {string} body.queuename - The name of the queue that triggered the job.
+ * @returns {Promise<object>} An object confirming the successful invocation and FI request initiation.
+ */
 exports.schedulerNotificationAPICall = async function (body) {
   try {
     
@@ -6864,6 +7358,13 @@ exports.schedulerNotificationAPICall = async function (body) {
   }
 }
 
+/**
+ * @description Acts as a webhook for the scheduler to handle FI data expiration. It deletes the expired FI data record associated with the given session ID.
+ * @param {object} body - The webhook payload.
+ * @param {string} body.sessionId - The session ID of the FI data to be deleted.
+ * @param {string} body.queuename - The name of the queue that triggered the job.
+ * @returns {Promise<object>} An object confirming the successful deletion of FI data.
+ */
 exports.fiDataSchedulerNotificationAPICall = async function (body) {
   try {
     
@@ -6926,6 +7427,11 @@ exports.fiDataSchedulerNotificationAPICall = async function (body) {
   }
 }
 
+/**
+ * @description Creates a new scheduled task by first registering it in the local database and then creating the corresponding job in an external scheduler service via an API call.
+ * @param {object} body - The scheduler configuration object, containing details like `queueName`, `consentHandle`, `scheduleTime` or `cronExpression`.
+ * @returns {Promise<object>} An object containing the response from the external scheduler service upon successful job creation.
+ */
 exports.postScheduler = async function (body) {
   console.log("insertData");
   try {
@@ -7024,6 +7530,11 @@ exports.postScheduler = async function (body) {
 }
 
 
+/**
+ * @description Retrieves a list of all scheduled jobs associated with a given consent handle from the external scheduler service.
+ * @param {string} consentHandle - The consent handle to look up scheduled jobs for.
+ * @returns {Promise<object>} An object containing the list of scheduled jobs.
+ */
 exports.getScheduler = async function (consentHandle) {
   try {
 
@@ -7082,6 +7593,11 @@ exports.getScheduler = async function (consentHandle) {
   }
 }
 
+/**
+ * @description Pauses a scheduled job queue in the external scheduler service.
+ * @param {string} queueName - The name of the queue to pause.
+ * @returns {Promise<object>} A success response object from the scheduler service.
+ */
 exports.pauseScheduler = async function (queueName) { 
   try {
 
@@ -7105,6 +7621,11 @@ exports.pauseScheduler = async function (queueName) {
   }
 }
 
+/**
+ * @description Resumes a paused job queue in the external scheduler service.
+ * @param {string} queueName - The name of the queue to resume.
+ * @returns {Promise<object>} A success response object from the scheduler service.
+ */
 exports.resumeScheduler = async function (queueName) { 
   try {
 
@@ -7128,6 +7649,11 @@ exports.resumeScheduler = async function (queueName) {
   }
 }
 
+/**
+ * @description Retrieves all analytical report data (FI requests) associated with a specific consent handle.
+ * @param {string} consentHandle - The consent handle to query by.
+ * @returns {Promise<object>} An object containing an array of FI request data.
+ */
 exports.getAnalyticalReportByConsentHandle = async function (consentHandle) { 
   try {
     let result = await SequelizeDao.getAllData('FI_REQUEST', { consentHandle: consentHandle });
@@ -7154,20 +7680,85 @@ exports.getAnalyticalReportByConsentHandle = async function (consentHandle) {
   }
 }
 
-exports.getAnalyticalReports = async function (realm,group) { 
+/**
+ * @description Retrieves a list of all analytical reports (FI requests linked with consent details), supporting pagination and filtering by realm and group.
+ * @param {object} filters - An object that can contain pagination information (e.g., `page`).
+ * @param {string} realm - The operational realm.
+ * @param {string} group - The user group.
+ * @returns {Promise<object>} An object containing the list of analytical reports and pagination metadata if applicable.
+ */
+exports.getAnalyticalReports = async function (filters,realm,group) { 
   try {
     // Assuming that `getAllDataWithFI_RequestConsentHandle` is a valid method
-    let result = await SequelizeDao.getAllDataWithFI_RequestConsentHandle(realm,group); // Pass conditions as needed
-    console.log(`Wrapper function result: ${JSON.stringify(result)}`);
+    const cacheKey = `analyticalReports_${group}`;
+    let page = 1;
+    let pageSize = process.env.DEFAULT_PAGE_SIZE;
+    console.log("filters.page",filters.page)
+    if (filters.page) {
+      page = filters.page;
+      delete filters.page;
 
-    const responseBody = {
-      message: "Success",
-      error: false,
-      data: result,
-      statusCode: 200 // Ensure a valid statusCode is always returned on success
-    };
+      let offset = (page - 1) * pageSize;
+      // let from = (page - 1) * pageSize;
+      // let to = page * pageSize - 1;
 
-    return responseBody;
+      // const result = await FIUDao.getPaginatedConsents(filters, from, to);
+
+      const result = await SequelizeDao.getPaginatedAnalyticalReports(filters, pageSize, offset,realm);
+
+      // await FIUDao.getCount('consent_request_detail').then(function (countResult) {
+      // result['totalCount'] = countResult.count;
+      // }).catch(function (err) {
+      //   console.log(err);
+      //   throw err;
+      // });
+
+      let responseBody;
+
+      if (result.error) {
+        if (result.error.statusCode == 401) {
+          responseBody = {
+            message: errorResponses[401].message,
+            error: errorResponses[401].error,
+            errorMessage: result.error.message,
+            statusCode: errorResponses[401].statusCode,
+          };
+        } else if (result.error.statusCode == 404) {
+          responseBody = {
+            message: errorResponses[404].message,
+            error: errorResponses[404].error,
+            errorMessage: result.error.message,
+            statusCode: errorResponses[404].statusCode,
+          };
+        }
+        throw responseBody;
+      } else {
+        responseBody = {
+          message: 'success',
+          error: false,
+          statusCode: 200,
+          result: {
+            data: result,
+            totalCount: result.count
+          }
+        };
+        await SET_ASYNC(cacheKey, JSON.stringify(responseBody), 'EX', 60);
+        return responseBody;
+      }
+    } else {
+      let result = await SequelizeDao.getAllDataWithFI_RequestConsentHandle(realm,group); // Pass conditions as needed
+      console.log(`Wrapper function result: ${JSON.stringify(result)}`);
+  
+      const responseBody = {
+        message: "Success",
+        error: false,
+        data: result,
+        statusCode: 200 // Ensure a valid statusCode is always returned on success
+      };
+  
+      return responseBody;
+    }
+  
 
   } catch (error) {
     console.error(`Error in getAnalyticalReports: ${error}`);
@@ -7180,6 +7771,11 @@ exports.getAnalyticalReports = async function (realm,group) {
     throw errorBody;
   }
 }
+/**
+ * @description Retrieves all configuration settings for a specific realm from the database.
+ * @param {string} realm - The name of the realm for which to fetch configurations.
+ * @returns {Promise<object>} An object containing the configuration data for the specified realm.
+ */
 exports.getAllRealmConfig = async function (realm) {
   console.log("realm : ",realm);
   try {
@@ -7205,6 +7801,12 @@ exports.getAllRealmConfig = async function (realm) {
   } 
 }
 
+/**
+ * @description Updates the configuration settings for a specific realm in the database.
+ * @param {string} realm - The name of the realm to update.
+ * @param {object} body - An object containing the configuration key-value pairs to update.
+ * @returns {Promise<object>} A success response object confirming the update.
+ */
 exports.updateRealConfig = async function(realm,body){
   try {
     console.log("updateRealConfig : service");
@@ -7229,6 +7831,11 @@ exports.updateRealConfig = async function(realm,body){
   }
 }
 
+/**
+ * @description Sends a job message to a queue for asynchronous processing by a scheduler.
+ * @param {object} body - The message payload representing the job to be queued.
+ * @returns {Promise<object>} A success response object confirming that the job has been queued.
+ */
 exports.postQueueJob = async function(body){
     try {
       console.log("postQueueJob : service");
@@ -7255,6 +7862,12 @@ exports.postQueueJob = async function(body){
 
 }
 
+/**
+ * @description Retrieves the current status of a Financial Information (FI) request using its session ID.
+ * @param {string} sessionId - The session ID of the FI request.
+ * @param {string} realm - The operational realm.
+ * @returns {Promise<object>} An object containing the FI request status and session ID.
+ */
 exports.getFiRequestStatus = async function (sessionId, realm) {
   console.log("inside getFiRequestStatus servie");
   
@@ -7294,6 +7907,11 @@ exports.getFiRequestStatus = async function (sessionId, realm) {
   
   return response;
 }
+/**
+ * @description Acknowledges the receipt of Financial Information (FI) request data.
+ * @param {object} body - The FI request information payload.
+ * @returns {Promise<object>} A success response object acknowledging the receipt of data.
+ */
 exports.postFiRequestinfo = async function(body) {
   try {
     console.log("body : body",body);
@@ -7322,6 +7940,14 @@ exports.postFiRequestinfo = async function(body) {
 
 /* Auth Service */
 
+/**
+ * @description Generates a secure session and a corresponding redirect URL for initiating a consent journey. It creates a JWS token containing session and user details.
+ * @param {string} realmid - The identifier of the realm for which the session is created.
+ * @param {string} correlation_id - A unique ID to correlate the entire session flow.
+ * @param {string} productId - An optional product ID to link the consent journey to a specific product.
+ * @param {object} payload - An object containing user group and success/failure redirect URLs.
+ * @returns {Promise<object>} A promise that resolves to an object containing the session ID, validity, and the full redirect URL.
+ */
 exports.generateSession = async function (realmid, correlation_id, productId, payload) {
   const deferred = Q.defer();
   console.log("Inside session service - generate Session");
@@ -7474,6 +8100,16 @@ try {
   return deferred.promise;
 };
 
+/**
+ * @description Validates a session and its associated JWS token. If the session is valid and open, it proceeds to initiate a bulk consent request and closes the session upon success.
+ * @param {string} sessionid - The session ID to validate.
+ * @param {string} correlation_id - The correlation ID to match with the session.
+ * @param {object} payload - The payload for the bulk consent request.
+ * @param {string} group - The user group associated with the request.
+ * @param {string} redirectURL - The redirect URL from the request, containing the JWS token.
+ * @param {string} realmId - The ID of the operational realm.
+ * @returns {Promise<object>} An object containing the final AA redirect URL, consent handles, and success redirect URL.
+ */
 exports.validateSession = async function (sessionid, correlation_id, payload, group, redirectURL,realmId) {
   try {
     const signature = process.env.signatureSecret;
@@ -7672,6 +8308,11 @@ exports.validateSession = async function (sessionid, correlation_id, payload, gr
   }
 };
 
+/**
+ * @description Retrieves a list of all Account Aggregators that are actively linked to a specific realm.
+ * @param {string} realm - The realm to filter by for active aggregators.
+ * @returns {Promise<object>} An object containing the list of active aggregators.
+ */
 exports.getActiveAggregators = async function (realm) {
   console.log("INSIDE AGGREGATOR SERVICE");
   try {
@@ -7712,6 +8353,10 @@ exports.getActiveAggregators = async function (realm) {
   }
 };
 
+/**
+ * @description Retrieves the Account Aggregator that is currently set as the default in the system.
+ * @returns {Promise<object>} An object containing the details of the default aggregator.
+ */
 exports.getDefaultAggregator = async function () {
   console.log("INSIDE default AGGREGATOR SERVICE");
   try {
@@ -7751,6 +8396,11 @@ exports.getDefaultAggregator = async function () {
   }
 };
 
+/**
+ * @description Retrieves the details of a specific product using its unique product ID.
+ * @param {string} product_id - The unique identifier of the product to fetch.
+ * @returns {Promise<object>} An object containing the product's details.
+ */
 exports.getProductDetailsbyProductId = async function (product_id) {
   try {
     let productDetails = await SequelizeDao.getProduct("product", product_id);
@@ -7779,6 +8429,10 @@ exports.getProductDetailsbyProductId = async function (product_id) {
   }
 };
 
+/**
+ * @description Retrieves configuration data from all master tables (e.g., FI types, operators, consent types) and consolidates them into a single response object.
+ * @returns {Promise<object>} An object where each key represents a master table and its value is an array of its records.
+ */
 exports.getAllMasterTableDetailsData = async function () {
   console.log("INSIDE getAllMasterTableDetailsData SERVICE");
   try {
@@ -7885,6 +8539,10 @@ exports.getAllMasterTableDetailsData = async function () {
   }
 };
 
+/**
+ * @description Retrieves all branding configurations from the database.
+ * @returns {Promise<object>} An object containing a list of all branding configurations.
+ */
 exports.getBrandConfigurations = async function () {
   console.log("INSIDE GET BRAND CONFIGURATION SERVICE");
   try {
@@ -7932,6 +8590,12 @@ exports.getBrandConfigurations = async function () {
     throw errorBody;
   }
 };
+/**
+ * @description An authenticated webhook endpoint to handle the receipt of a Bank Statement Analysis (BSA) report. It validates the request and triggers the report download process.
+ * @param {string} auth - The Basic Authorization header for request validation.
+ * @param {object} body - The webhook payload containing the `excelUrl` and `referenceId` for the report.
+ * @returns {Promise<object>} A success response object upon successful validation and trigger of the download.
+ */
 exports.getBsaReportAuth = async function (auth, body) {
   try {
     const params = {
@@ -7994,6 +8658,13 @@ exports.getBsaReportAuth = async function (auth, body) {
   }
 };
 
+/**
+ * @description Generates a billing report in PDF format. It gathers data on consent and FI fetch counts, aggregates details, and compiles them into a structured JSON object for rendering.
+ * @param {object} body - The request body containing the `startDate` and `endDate` for the billing period.
+ * @param {string} realm - The operational realm.
+ * @param {string} group - The user group.
+ * @returns {Promise<object>} An object containing the generated PDF report as a buffer.
+ */
 exports.getFiFetch =  async function (body,realm,group) { 
   var deferred = Q.defer();
   try {
@@ -8139,6 +8810,13 @@ exports.getFiFetch =  async function (body,realm,group) {
   return deferred.promise;
 }
 
+/**
+ * @description Initiates a bulk Financial Information (FI) request by accepting an array of consent handles. It validates the handles and queues them for asynchronous processing.
+ * @param {string[]} body - An array of consent handle strings.
+ * @param {string} realm - The operational realm.
+ * @param {string} group - The user group.
+ * @returns {Promise<object>} An acknowledgement response with a unique ID for tracking the bulk request.
+ */
 exports.postBulkFiRequest = async function (body,realm,group) {
   try{
     //check empty
@@ -8344,6 +9022,13 @@ exports.postBulkFiRequest = async function (body,realm,group) {
   }
 }
 
+/**
+ * @description Retrieves the status of all individual FI requests that were part of a bulk request.
+ * @param {string} req_id - The unique ID of the bulk FI request.
+ * @param {string} realm - The operational realm.
+ * @param {string} group - The user group.
+ * @returns {Promise<object>} An object containing an array of consent handles and their corresponding FI request statuses.
+ */
 exports.postBulkFiRequestStatus = async function (req_id,realm,group) {
   try{
     if(!req_id) {
@@ -8413,4 +9098,3 @@ exports.postBulkFiRequestStatus = async function (req_id,realm,group) {
   }
 }
 /*END */ 
-
