@@ -1,8 +1,44 @@
+/**
+ * FIU Controller Module
+ * 
+ * This module contains all the controller functions for Financial Information User (FIU) operations.
+ * It handles authentication, token validation, and various financial data processing requests.
+ * 
+ * Key Features:
+ * - JWT token validation and realm extraction
+ * - Authentication with Keycloak integration
+ * - Financial data request processing
+ * - Error handling and response formatting
+ * - Integration with FIU services
+ * 
+ * Dependencies:
+ * - FIUService: Business logic for financial operations
+ * - JWT: Token validation and decoding
+ * - UUID: Unique identifier generation
+ * 
+ * @author FIU Development Team
+ * @version 1.0.0
+ */
+
 const FIUService = require('../services/FIU.service')
 const jwt = require('jsonwebtoken');
 const { errorResponses } = require('../utils/messageCode.json');
 const uuid = require('uuid');
 
+/**
+ * Extracts realm information from a JWT access token
+ * 
+ * This function decodes a JWT token and extracts the realm name from the issuer (iss) claim.
+ * The realm is used for multi-tenant authentication and authorization.
+ * 
+ * @param {string} accessToken - The JWT access token to decode
+ * @returns {string} The realm name extracted from the token
+ * @throws {Object} Error object with status code and message if token is invalid or missing issuer
+ * 
+ * @example
+ * const realm = getRealm('eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...');
+ * console.log(realm); // 'financial-realm'
+ */
 function getRealm(accessToken) {
   const decoded = jwt.decode(accessToken);
   if (decoded) {
@@ -37,6 +73,21 @@ function getRealm(accessToken) {
     // return null;
   }
 }
+
+/**
+ * Extracts realm ID from JWT token for iframe authentication
+ * 
+ * Similar to getRealm but specifically looks for realm_id claim instead of parsing issuer URL.
+ * Used for iframe-based authentication scenarios where realm_id is directly provided in token.
+ * 
+ * @param {string} accessToken - The JWT access token containing realm_id claim
+ * @returns {string} The realm ID from the token
+ * @throws {Object} Error object if realm_id claim is not found or token is invalid
+ * 
+ * @example
+ * const realmId = getRealmIFrame('eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...');
+ * console.log(realmId); // 'realm-123'
+ */
 function getRealmIFrame(accessToken) {
   const decoded = jwt.decode(accessToken);
   if (decoded) {
@@ -69,6 +120,7 @@ function getRealmIFrame(accessToken) {
     // return null;
   }
 }
+
 function getGroup(accessToken) {
   try {
     const decoded = jwt.decode(accessToken);
@@ -325,7 +377,7 @@ function getFinancialInfo(req, res) {
  * @author: adarsh
  * @description: POST FI Notification.
  * @param: {} req.param will contain .
- * @return: {object} res will contain a message, statusCode, error (i.logoute true or false) and result (data, count, page etc).
+ * @return: {object} res will contain a message, statusCode, error (i.e true or false) and result (data, count, page etc).
  */
 
 function postFINotification(req, res) {

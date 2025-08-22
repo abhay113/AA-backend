@@ -1,49 +1,89 @@
+/**
+ * FIU Middleware Application - Main Entry Point
+ * 
+ * This is the main Express.js application server for the Financial Information User (FIU) middleware.
+ * It handles financial data processing, authentication, and API routing.
+ * 
+ * Features:
+ * - Express.js web server with CORS support
+ * - BullMQ job queues for background processing
+ * - Redis connection for caching and queue management
+ * - Response time monitoring
+ * - Bull Board for queue monitoring dashboard
+ * 
+ * Dependencies:
+ * - Express.js for web server
+ * - BullMQ for job queue management
+ * - Redis for caching and queue storage
+ * - Various custom routes and middleware
+ * 
+ * @author FIU Development Team
+ * @version 1.0.0
+ * - Express.js web server with CORS support
+ */
+
+// Core Express.js dependencies
 const express = require('express')
 const cors = require('cors');
 const app = express();
+
+// Application routes and middleware
 const apiRoutes = require('./routes/index')
 const responseTime = require('response-time');
+
+// Database configuration (currently commented out)
 // const { Sequelize } = require('sequelize');
 // const sequelizeConfig = require('./config');
+
+// Background job processing consumers
 require('./scheduler_queue/consumer');
 require('./fiRequest_queue/addFiRequestQueue');
 
+// Redis connection and BullMQ setup
 const connection = require('./config');
 const { Queue } = require('bullmq');
+
+// Bull Board for queue monitoring dashboard
 const { createBullBoard } = require('bull-board')
 const { BullMQAdapter } = require('bull-board/bullMQAdapter')
 
-
-// const queueMQ = new QueueMQ('queueMQName')
+// Initialize job queues
+// const queueMQ = new QueueMQ('queueMQName') // Legacy queue (commented)
 const queueMQ = new Queue('scheduler-queue', { connection });
-
 const fiRequestqueueMQ = new Queue('fiRequest-queue', { connection });
 
+// Create Bull Board dashboard with both queues
 const { router} = createBullBoard([
   new BullMQAdapter(queueMQ),new BullMQAdapter(fiRequestqueueMQ)
 ])
 
+// Middleware setup
+app.use(responseTime()); // Add response time headers
 
-app.use(responseTime());
-
+// Load environment variables
 require('dotenv').config();
 
+// Disable TLS certificate validation (for development/testing)
 // eslint-disable-next-line no-undef
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
+// CORS configuration (currently using default settings)
+// Commented out custom CORS configuration for specific origins
 // const allowedOrigin = '';
-
 // const corsOptions = {
 //   origin: allowedOrigin, 
 //   optionsSuccessStatus: 200, 
 // };
 
-app.use(cors());
-app.use(express.json());
-app.use(apiRoutes);
+// Express middleware configuration
+app.use(cors()); // Enable CORS for all routes
+app.use(express.json()); // Parse JSON request bodies
+app.use(apiRoutes); // Mount API routes
 
+// Bull Board dashboard route for queue monitoring
 app.use('/admin/queues', router)
 
+// Health check endpoint
 app.get('/',function(req,res){
   res.send('Hello');
 })

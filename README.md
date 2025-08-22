@@ -1,93 +1,220 @@
-# fiu_middleware
+# FIU Middleware
 
+A Node.js/Express.js middleware application for Financial Information User (FIU) operations, providing secure financial data processing, authentication, and job queue management.
 
+## Overview
 
-## Getting started
+This middleware serves as the central processing hub for financial information requests, handling authentication via Keycloak, managing background job processing with BullMQ, and providing RESTful APIs for financial data operations.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Features
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+- **🔐 Authentication**: Keycloak integration with JWT token validation
+- **📊 Queue Management**: BullMQ-based job processing with Redis backend
+- **🚀 RESTful APIs**: Comprehensive API endpoints for financial operations
+- **📈 Monitoring**: Bull Board dashboard for queue monitoring
+- **🔄 Background Processing**: Asynchronous task processing
+- **🗄️ Database Support**: PostgreSQL integration with Sequelize ORM
+- **⚡ Performance**: Response time monitoring and optimization
 
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+## Architecture
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.gitlabsh.cateina.com/aa_tsp/fiu_middleware.git
-git branch -M main
-git push -uf origin main
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Client Apps   │───▶│  FIU Middleware │───▶│   External APIs │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                              │
+                              ▼
+                    ┌─────────────────┐
+                    │  Background     │
+                    │  Job Queues     │
+                    │  (BullMQ/Redis) │
+                    └─────────────────┘
+                              │
+                              ▼
+                    ┌─────────────────┐
+                    │   PostgreSQL    │
+                    │   Database      │
+                    └─────────────────┘
 ```
 
-## Integrate with your tools
+## Tech Stack
 
-- [ ] [Set up project integrations](https://gitlab.gitlabsh.cateina.com/aa_tsp/fiu_middleware/-/settings/integrations)
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Database**: PostgreSQL
+- **Cache/Queue**: Redis with BullMQ
+- **Authentication**: Keycloak (JWT)
+- **Monitoring**: Bull Board
+- **Linting**: ESLint
 
-## Collaborate with your team
+## Getting Started
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+### Prerequisites
 
-## Test and Deploy
+- Node.js (v14 or higher)
+- PostgreSQL database
+- Redis server
+- Keycloak server (for authentication)
 
-Use the built-in continuous integration in GitLab.
+### Installation
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+1. **Clone the repository**
+   ```bash
+   git clone https://gitlab.gitlabsh.cateina.com/aa_tsp/fiu_middleware.git
+   cd fiu_middleware
+   ```
 
-***
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-# Editing this README
+3. **Environment Configuration**
+   
+   Create a `.env` file in the root directory with the following variables:
+   ```env
+   # Database Configuration
+   POSTGRES_USER=your_db_user
+   POSTGRES_PASSWORD=your_db_password
+   POSTGRES_DATABASE=fiu_database
+   POSTGRES_HOST_NAME=localhost
+   POSTGRES_PORT=5432
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+   # Redis Configuration
+   REDIS_HOST=localhost
+   REDIS_PORT=6379
 
-## Suggestions for a good README
+   # Application Configuration
+   PORT=3000
+   NODE_ENV=development
+   ```
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+4. **Start the application**
+   ```bash
+   # Development
+   npm start
 
-## Name
-Choose a self-explaining name for your project.
+   # With Redis server
+   npm run redis
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+   # Run tests
+   npm test
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+   # Linting
+   npm run lint
+   ```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+## API Endpoints
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+### Base URLs
+- **Client Operations**: `/api/fiu/v1/*`
+- **Notifications**: `/api/fiu/v1/*`
+- **Task Scheduling**: `/aa/tsp/*`
+- **Queue Monitoring**: `/admin/queues` (Bull Board Dashboard)
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+### Health Check
+- **GET** `/` - Returns application status
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+## Project Structure
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+```
+fiu_middleware/
+├── controllers/          # Request handlers and business logic controllers
+│   ├── FIU.controller.js
+│   └── keycloak.controller.js
+├── services/            # Business logic and external service integrations
+│   ├── FIU.service.js
+│   └── keycloak.service.js
+├── routes/              # API route definitions
+│   ├── index.js         # Main route configuration
+│   ├── client.routes.js
+│   ├── notification.routes.js
+│   └── scheduler.route.js
+├── middlewares/         # Custom Express middlewares
+├── dao/                 # Data Access Objects
+├── utils/               # Utility functions and helpers
+├── validator/           # Input validation logic
+├── scheduler_queue/     # Background job queue consumers
+├── fiRequest_queue/     # Financial request queue management
+├── test_cases/          # API test cases
+├── unit_tests_UI/       # Frontend unit tests
+├── unit_tests_server/   # Backend unit tests
+├── uploads/             # File upload storage
+├── config.js            # Database and Redis configuration
+├── index.js             # Application entry point
+└── FIU.model.js         # Database models
+```
+
+## Queue Management
+
+The application uses BullMQ for background job processing:
+
+- **Scheduler Queue**: Handles scheduled financial data processing tasks
+- **FI Request Queue**: Manages financial information requests
+- **Monitoring**: Access the Bull Board dashboard at `/admin/queues`
+
+## Authentication
+
+Authentication is handled via Keycloak with JWT tokens:
+- Tokens are validated on protected routes
+- Realm information is extracted for multi-tenant support
+- Support for both standard and iframe-based authentication
+
+## Development
+
+### Code Style
+- ESLint configuration included
+- Run `npm run lint` to check code style
+- Follow JSDoc commenting standards for functions
+
+### Testing
+```bash
+# Run all tests
+npm test
+
+# Run specific test suites
+npm run test:unit
+npm run test:integration
+```
+
+### Docker Support
+```bash
+# Build and run with Docker
+docker-compose up --build
+```
+
+## Monitoring and Debugging
+
+- **Queue Dashboard**: `/admin/queues` - Monitor job queues and processing status
+- **Response Time**: Automatic response time headers added to all requests
+- **Logging**: Console logging for debugging (TODO: Implement structured logging)
+
+## Environment Variables
+
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `POSTGRES_USER` | Database username | Yes | - |
+| `POSTGRES_PASSWORD` | Database password | Yes | - |
+| `POSTGRES_DATABASE` | Database name | Yes | - |
+| `POSTGRES_HOST_NAME` | Database hostname | Yes | - |
+| `POSTGRES_PORT` | Database port | Yes | - |
+| `REDIS_HOST` | Redis hostname | Yes | - |
+| `REDIS_PORT` | Redis port | Yes | - |
+| `PORT` | Application port | No | 3000 |
+| `NODE_ENV` | Environment | No | development |
 
 ## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Merge Request
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+This project is licensed under the ISC License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For support and questions, please contact the FIU Development Team.
